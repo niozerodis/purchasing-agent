@@ -35,14 +35,13 @@
                 class="fa-solid fa-bag-shopping text-indigo-600 text-2xl mr-2"
               ></i>
               <h1 class="text-xl font-bold text-gray-800">代購紀錄小幫手</h1>
-              <div class="flex items-center ml-4">
+              <div class="flex items-center ml-4 space-x-3">
                 <span v-if="isLoading" class="text-sm text-gray-500"
-                  ><i class="fa-solid fa-spinner fa-spin"></i>
-                  讀取資料中...</span
+                  ><i class="fa-solid fa-spinner fa-spin"></i> 讀取中...</span
                 >
                 <span v-if="isSaving" class="text-sm text-green-600"
                   ><i class="fa-solid fa-cloud-arrow-up fa-fade"></i>
-                  資料儲存中...</span
+                  處理中...</span
                 >
               </div>
             </div>
@@ -56,13 +55,53 @@
         </div>
       </nav>
 
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        <div
+          class="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3"
+        >
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <label class="text-sm font-bold text-gray-600 whitespace-nowrap"
+              ><i class="fa-solid fa-table"></i> 當前分頁：</label
+            >
+            <input
+              v-model="currentSheetName"
+              type="text"
+              class="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-indigo-700"
+              placeholder="輸入分頁名稱 (如 data)"
+            />
+            <button
+              @click="fetchData()"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded text-sm transition"
+              title="讀取此分頁"
+            >
+              <i class="fa-solid fa-rotate-right"></i> 讀取
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              @click="createNewSheet"
+              class="text-indigo-600 hover:bg-indigo-50 px-3 py-1 rounded text-sm transition border border-indigo-200"
+            >
+              <i class="fa-solid fa-folder-plus"></i> 建立新表
+            </button>
+            <button
+              @click="deleteCurrentSheet"
+              class="text-red-500 hover:bg-red-50 px-3 py-1 rounded text-sm transition border border-red-200"
+            >
+              <i class="fa-solid fa-trash-can"></i> 刪除此表
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div
-        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 grid grid-cols-2 md:grid-cols-4 gap-4"
+        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 grid grid-cols-2 md:grid-cols-4 gap-4"
       >
         <div
           class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-indigo-500"
         >
-          <div class="text-gray-500 text-xs font-semibold">總代購項目</div>
+          <div class="text-gray-500 text-xs font-semibold">本頁筆數</div>
           <div class="text-2xl font-bold text-gray-800">
             {{ items.length }} <span class="text-xs font-normal">筆</span>
           </div>
@@ -90,12 +129,12 @@
       </div>
 
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div class="mb-4 flex flex-col sm:flex-row gap-3">
+        <div class="mb-4">
           <input
             v-model="searchQuery"
             type="text"
             placeholder="搜尋項目、買家或備註..."
-            class="w-full sm:w-1/3 border-gray-300 border p-2 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm"
+            class="w-full sm:w-1/3 border-gray-300 border p-2 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
           />
         </div>
 
@@ -139,7 +178,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr
-                v-for="(item, index) in filteredItems"
+                v-for="item in filteredItems"
                 :key="item.id"
                 class="hover:bg-gray-50 transition"
               >
@@ -152,7 +191,7 @@
                 <td class="px-6 py-4">
                   <div class="text-sm text-gray-900">{{ item.platform }}</div>
                   <div class="text-xs text-gray-500">
-                    {{ item.currency }} (匯率: {{ item.rate }})
+                    {{ item.currency }} ({{ item.rate }})
                   </div>
                 </td>
                 <td class="px-6 py-4">
@@ -160,9 +199,7 @@
                     ${{ formatNumber(calculateTotal(item)) }}
                   </div>
                   <div class="text-xs text-gray-500">
-                    {{ item.originalPrice }} × {{ item.quantity }} = {{
-                    formatNumber(item.originalPrice * item.quantity) }} {{
-                    item.currency }}
+                    {{ item.originalPrice }} × {{ item.quantity }}
                   </div>
                 </td>
                 <td class="px-6 py-4">
@@ -173,7 +210,7 @@
                     {{ item.isPaid ? '已付款' : '未付款' }}
                   </span>
                   <div class="text-xs text-gray-500">
-                    出貨: {{ item.shippingDate || '未定' }}
+                    {{ item.shippingDate || '未定' }}
                   </div>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
@@ -200,7 +237,7 @@
             v-if="filteredItems.length === 0"
             class="p-8 text-center text-gray-500"
           >
-            目前沒有符合的代購紀錄
+            此分頁沒有資料
           </div>
         </div>
 
@@ -224,40 +261,20 @@
                 {{ item.isPaid ? '已付' : '未付' }}
               </span>
             </div>
-
             <div class="grid grid-cols-2 gap-2 text-sm mb-3">
               <div class="bg-gray-50 p-2 rounded">
-                <span class="text-xs text-gray-400 block">原幣金額</span>
+                <span class="text-xs text-gray-400 block">原幣</span>
                 <span class="font-medium"
                   >{{ item.originalPrice }} {{ item.currency }}</span
                 >
               </div>
               <div class="bg-indigo-50 p-2 rounded">
-                <span class="text-xs text-indigo-400 block">台幣總計</span>
+                <span class="text-xs text-indigo-400 block">台幣</span>
                 <span class="font-bold text-indigo-700"
                   >${{ formatNumber(calculateTotal(item)) }}</span
                 >
               </div>
             </div>
-
-            <div class="text-xs text-gray-500 mb-3 space-y-1">
-              <p>
-                <i class="fa-solid fa-calculator w-4"></i> 數量: {{
-                item.quantity }} | 匯率: {{ item.rate }}
-              </p>
-              <p>
-                <i class="fa-solid fa-truck w-4"></i> 出貨: {{ item.shippingDate
-                || '未定' }}
-              </p>
-              <p v-if="item.paymentMethod">
-                <i class="fa-solid fa-wallet w-4"></i> 方式: {{
-                item.paymentMethod }}
-              </p>
-              <p v-if="item.notes" class="text-gray-400 italic mt-1">
-                {{ item.notes }}
-              </p>
-            </div>
-
             <div class="flex justify-end border-t pt-2 gap-3">
               <button @click="editItem(item)" class="text-indigo-600 text-sm">
                 <i class="fa-solid fa-pen"></i> 編輯
@@ -274,7 +291,6 @@
         <div
           v-if="showModal"
           class="fixed inset-0 z-50 overflow-y-auto"
-          aria-labelledby="modal-title"
           role="dialog"
           aria-modal="true"
         >
@@ -285,85 +301,68 @@
               class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
               @click="closeModal()"
             ></div>
-            <span
-              class="hidden sm:inline-block sm:align-middle sm:h-screen"
-              aria-hidden="true"
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen"
               >&#8203;</span
             >
-
             <div
               class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full"
             >
               <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <h3
-                  class="text-lg leading-6 font-medium text-gray-900 mb-4"
-                  id="modal-title"
-                >
-                  {{ isEditing ? '編輯代購紀錄' : '新增代購紀錄' }}
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                  {{ isEditing ? '編輯紀錄' : '新增紀錄' }}
                 </h3>
-
                 <form @submit.prevent="saveItem" class="space-y-4">
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-gray-700"
                         >代購項目</label
-                      >
-                      <input
+                      ><input
                         v-model="form.name"
                         required
                         type="text"
-                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 text-sm"
                       />
                     </div>
                     <div>
                       <label class="block text-sm font-medium text-gray-700"
                         >代購平台</label
-                      >
-                      <input
+                      ><input
                         v-model="form.platform"
                         type="text"
-                        placeholder="例如：Mercari"
-                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 text-sm"
                       />
                     </div>
                   </div>
-
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-gray-700"
-                        >商家名字</label
-                      >
-                      <input
+                        >商家</label
+                      ><input
                         v-model="form.merchant"
                         type="text"
-                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 text-sm"
                       />
                     </div>
                     <div>
                       <label class="block text-sm font-medium text-gray-700"
                         >幣值</label
-                      >
-                      <select
+                      ><select
                         v-model="form.currency"
-                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-white"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 text-sm bg-white"
                       >
-                        <option value="JPY">日幣 (JPY)</option>
-                        <option value="USD">美金 (USD)</option>
-                        <option value="CNY">人民幣 (CNY)</option>
-                        <option value="KRW">韓元 (KRW)</option>
-                        <option value="TWD">台幣 (TWD)</option>
-                        <option value="EUR">歐元 (EUR)</option>
+                        <option value="JPY">JPY</option>
+                        <option value="USD">USD</option>
+                        <option value="CNY">CNY</option>
+                        <option value="TWD">TWD</option>
                       </select>
                     </div>
                   </div>
-
                   <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                     <div class="grid grid-cols-3 gap-3">
                       <div>
                         <label class="block text-xs font-medium text-gray-500"
-                          >單價(原幣)</label
-                        >
-                        <input
+                          >單價</label
+                        ><input
                           v-model.number="form.originalPrice"
                           type="number"
                           step="0.01"
@@ -373,8 +372,7 @@
                       <div>
                         <label class="block text-xs font-medium text-gray-500"
                           >數量</label
-                        >
-                        <input
+                        ><input
                           v-model.number="form.quantity"
                           type="number"
                           class="mt-1 w-full border-gray-300 rounded p-1 text-sm"
@@ -383,8 +381,7 @@
                       <div>
                         <label class="block text-xs font-medium text-gray-500"
                           >匯率</label
-                        >
-                        <input
+                        ><input
                           v-model.number="form.rate"
                           type="number"
                           step="0.0001"
@@ -392,86 +389,64 @@
                         />
                       </div>
                     </div>
-                    <div class="mt-2 text-right">
-                      <span class="text-xs text-gray-500"
-                        >預估總額(台幣)：</span
-                      >
-                      <span class="text-lg font-bold text-indigo-600"
-                        >${{ formatNumber(Math.round(form.originalPrice *
-                        form.quantity * form.rate)) }}</span
-                      >
-                    </div>
                   </div>
-
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-gray-700"
                         >出貨時間</label
-                      >
-                      <input
+                      ><input
                         v-model="form.shippingDate"
                         type="date"
-                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 text-sm"
                       />
                     </div>
                     <div>
                       <label class="block text-sm font-medium text-gray-700"
                         >收款方式</label
-                      >
-                      <input
+                      ><input
                         v-model="form.paymentMethod"
                         type="text"
-                        list="payment-methods"
-                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"
-                      />
-                      <datalist id="payment-methods">
-                        <option value="轉帳"></option>
-                        <option value="LinePay"></option>
-                        <option value="現金"></option>
-                        <option value="街口"></option>
+                        list="methods"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 text-sm"
+                      /><datalist id="methods">
+                        <option value="轉帳" />
+                        <option value="LinePay" />
                       </datalist>
                     </div>
                   </div>
-
                   <div class="flex items-center mt-2">
                     <input
-                      id="paid-status"
+                      id="paid"
                       v-model="form.isPaid"
                       type="checkbox"
-                      class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                    <label
-                      for="paid-status"
+                      class="h-4 w-4 text-indigo-600"
+                    /><label
+                      for="paid"
                       class="ml-2 block text-sm text-gray-900 font-bold"
+                      >已付款</label
                     >
-                      買家是否已付款？
-                    </label>
                   </div>
-
                   <div>
                     <label class="block text-sm font-medium text-gray-700"
                       >備註</label
-                    >
-                    <textarea
+                    ><textarea
                       v-model="form.notes"
                       rows="2"
-                      class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"
+                      class="mt-1 block w-full border border-gray-300 rounded-md p-2 text-sm"
                     ></textarea>
                   </div>
-
                   <div class="pt-4 flex justify-end gap-3">
                     <button
                       type="button"
                       @click="closeModal()"
-                      class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      class="bg-white py-2 px-4 border border-gray-300 rounded text-sm text-gray-700"
                     >
-                      取消
-                    </button>
-                    <button
+                      取消</button
+                    ><button
                       type="submit"
-                      class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
+                      class="bg-indigo-600 text-white py-2 px-4 rounded text-sm font-medium hover:bg-indigo-700"
                     >
-                      {{ isEditing ? '儲存修改' : '新增' }}
+                      儲存
                     </button>
                   </div>
                 </form>
@@ -483,26 +458,25 @@
     </div>
 
     <script>
-      const { createApp, ref, computed, watch, onMounted } = Vue;
+      const { createApp, ref, computed, onMounted } = Vue;
 
       createApp({
         setup() {
-          // ★ 設定你的 Google Apps Script 網址 ★
+          // ★ 這裡請填入你的 Apps Script 網址
           const API_URL =
             "https://script.google.com/macros/s/AKfycbzrfKqSmXKnlXPgxc0_7OHcDSsIHvUo9reeAdqauNoPvzBCh2ryhoG5c04LQi9XYrIP/exec";
 
-          // 資料儲存
           const items = ref([]);
           const searchQuery = ref("");
-          const isLoading = ref(false); // 讀取狀態
-          const isSaving = ref(false); // 儲存狀態
-
-          // Modal 控制
+          const isLoading = ref(false);
+          const isSaving = ref(false);
           const showModal = ref(false);
           const isEditing = ref(false);
           const currentId = ref(null);
 
-          // 表單預設值
+          // ★ 新增：當前分頁名稱 (預設為 data)
+          const currentSheetName = ref("data");
+
           const defaultForm = {
             name: "",
             platform: "",
@@ -518,153 +492,196 @@
           };
           const form = ref({ ...defaultForm });
 
-          // ★ 從 Google Sheet 讀取資料 ★
+          // ★ 取得密碼的輔助函式
+          const getPassword = () => {
+            let pwd = localStorage.getItem("my_app_password");
+            if (!pwd) {
+              pwd = prompt("請輸入管理員密碼：");
+              if (pwd) localStorage.setItem("my_app_password", pwd);
+            }
+            return pwd;
+          };
+
+          // ★ 讀取資料 (支援指定分頁)
           const fetchData = async () => {
             isLoading.value = true;
+            items.value = []; // 切換時先清空，避免混淆
             try {
-              const res = await fetch(API_URL);
+              // 透過 URL 參數告訴後端我要讀哪個分頁
+              const url = `${API_URL}?sheet=${encodeURIComponent(
+                currentSheetName.value
+              )}`;
+              const res = await fetch(url);
               const data = await res.json();
-              // 確保 ID 是數字或字串，並處理格式
-              items.value = data.map((i) => ({
-                ...i,
-                isPaid: Boolean(i.isPaid),
-              }));
+
+              if (data.error) {
+                alert(`讀取錯誤：${data.error}`); // 例如找不到分頁
+              } else {
+                items.value = data.map((i) => ({
+                  ...i,
+                  isPaid: Boolean(i.isPaid),
+                }));
+              }
             } catch (error) {
-              alert("讀取資料失敗，請檢查網路或 Script 設定");
               console.error(error);
+              alert("讀取失敗");
             } finally {
               isLoading.value = false;
             }
           };
 
-          // ★ 將資料儲存回 Google Sheet ★
-          // 為了避免每打一個字就存檔，我們做一個專門的儲存函數，
-          // 並在新增/修改/刪除完成後呼叫
-          const syncToCloud = async () => {
+          // ★ 通用指令發送函式 (Save / Create / Delete)
+          const sendCommand = async (action, extraData = {}) => {
+            const userPassword = getPassword();
+            if (!userPassword) return false;
+
             isSaving.value = true;
-            let userPassword = localStorage.getItem("secret_key");
-
-            if (!userPassword) {
-              userPassword = prompt("請輸入管理員密碼：");
-              if (!userPassword) {
-                alert("未輸入密碼，取消儲存。");
-                isSaving.value = false;
-                return; // 終止
-              }
-              // 把密碼存起來，下次就不用再輸入了
-              localStorage.setItem("secret_key", userPassword);
-            }
-
             try {
               const payload = {
-                auth: userPassword, // ★ 這裡改成使用變數，而不是寫死的字串
-                data: items.value,
+                auth: userPassword,
+                action: action, // 告訴後端要做什麼
+                sheetName: currentSheetName.value, // 對哪個分頁操作
+                ...extraData, // 附帶資料 (例如書單內容)
               };
 
               const res = await fetch(API_URL, {
                 method: "POST",
                 body: JSON.stringify(payload),
               });
-
-              // 檢查回傳結果，如果後端說密碼錯誤...
               const result = await res.json();
+
               if (result.status === "error") {
-                alert("密碼錯誤！請重新操作");
-                localStorage.removeItem("secret_key"); // 清除錯誤密碼
+                alert(result.message);
+                if (result.message.includes("密碼"))
+                  localStorage.removeItem("my_app_password");
+                return false;
               }
+              return true; // 成功
             } catch (e) {
-              alert("儲存失敗！");
+              alert("操作失敗，請檢查網路");
+              return false;
             } finally {
-              setTimeout(() => {
-                isSaving.value = false;
-              }, 1000);
+              isSaving.value = false;
             }
           };
 
-          // 畫面載入時讀取
+          // ★ 儲存資料
+          const saveItem = async () => {
+            // 先更新本地列表
+            if (isEditing.value) {
+              const idx = items.value.findIndex(
+                (i) => i.id === currentId.value
+              );
+              if (idx !== -1)
+                items.value[idx] = { ...form.value, id: currentId.value };
+            } else {
+              items.value.unshift({ ...form.value, id: Date.now() });
+            }
+            closeModal();
+
+            // 發送指令到後端
+            await sendCommand("save", { data: items.value });
+          };
+
+          const deleteItem = async (id) => {
+            if (confirm("刪除此項目？")) {
+              items.value = items.value.filter((i) => i.id !== id);
+              await sendCommand("save", { data: items.value });
+            }
+          };
+
+          // ★ 新增分頁功能
+          const createNewSheet = async () => {
+            const newName = prompt("請輸入新分頁名稱 (例如: 2024-06)：");
+            if (!newName) return;
+
+            // 暫時切換名稱去發送指令
+            const oldName = currentSheetName.value;
+            currentSheetName.value = newName;
+
+            const success = await sendCommand("create_sheet");
+            if (success) {
+              alert("分頁建立成功！");
+              items.value = []; // 新分頁是空的
+            } else {
+              currentSheetName.value = oldName; // 失敗就切回來
+            }
+          };
+
+          // ★ 刪除分頁功能
+          const deleteCurrentSheet = async () => {
+            if (
+              !confirm(
+                `確定要刪除整個「${currentSheetName.value}」分頁嗎？此動作無法復原！`
+              )
+            )
+              return;
+
+            const success = await sendCommand("delete_sheet");
+            if (success) {
+              alert("分頁已刪除");
+              currentSheetName.value = "data"; // 刪除後回到預設頁
+              fetchData();
+            }
+          };
+
           onMounted(() => {
             fetchData();
           });
 
-          // 計算邏輯 (維持不變)
-          const calculateTotal = (item) =>
-            Math.round(item.originalPrice * item.quantity * item.rate);
-          const formatNumber = (num) =>
-            num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-          // 統計數據 (維持不變)
+          // 計算邏輯
+          const calculateTotal = (i) =>
+            Math.round(i.originalPrice * i.quantity * i.rate);
+          const formatNumber = (n) =>
+            n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
           const totalPaid = computed(() =>
             items.value
               .filter((i) => i.isPaid)
-              .reduce((sum, i) => sum + calculateTotal(i), 0)
+              .reduce((s, i) => s + calculateTotal(i), 0)
           );
           const totalUnpaid = computed(() =>
             items.value
               .filter((i) => !i.isPaid)
-              .reduce((sum, i) => sum + calculateTotal(i), 0)
+              .reduce((s, i) => s + calculateTotal(i), 0)
           );
           const filteredItems = computed(() => {
             if (!searchQuery.value) return items.value;
-            const lowerQuery = searchQuery.value.toLowerCase();
+            const q = searchQuery.value.toLowerCase();
             return items.value.filter(
-              (item) =>
-                item.name.toLowerCase().includes(lowerQuery) ||
-                (item.merchant &&
-                  item.merchant.toLowerCase().includes(lowerQuery)) ||
-                (item.notes && item.notes.toLowerCase().includes(lowerQuery))
+              (i) =>
+                i.name.toLowerCase().includes(q) ||
+                (i.merchant && i.merchant.toLowerCase().includes(q))
             );
           });
 
-          // 操作功能
           const openModal = () => {
             isEditing.value = false;
             form.value = { ...defaultForm };
             showModal.value = true;
           };
-
           const editItem = (item) => {
             isEditing.value = true;
             currentId.value = item.id;
             form.value = JSON.parse(JSON.stringify(item));
             showModal.value = true;
           };
-
-          const closeModal = () => {
-            showModal.value = false;
-          };
-
-          const saveItem = async () => {
-            if (isEditing.value) {
-              const index = items.value.findIndex(
-                (i) => i.id === currentId.value
-              );
-              if (index !== -1)
-                items.value[index] = { ...form.value, id: currentId.value };
-            } else {
-              items.value.unshift({ ...form.value, id: Date.now() });
-            }
-            closeModal();
-            await syncToCloud(); // ★ 操作後同步
-          };
-
-          const deleteItem = async (id) => {
-            if (confirm("確定要刪除這筆紀錄嗎？")) {
-              items.value = items.value.filter((i) => i.id !== id);
-              await syncToCloud(); // ★ 操作後同步
-            }
-          };
+          const closeModal = () => (showModal.value = false);
 
           return {
             items,
             searchQuery,
+            isLoading,
+            isSaving,
             showModal,
             isEditing,
             form,
+            currentSheetName, // 讓 HTML 可以綁定
+            fetchData,
+            createNewSheet,
+            deleteCurrentSheet, // 新功能
             filteredItems,
             totalPaid,
             totalUnpaid,
-            isLoading,
-            isSaving,
             openModal,
             closeModal,
             saveItem,
