@@ -63,12 +63,29 @@
             <label class="text-sm font-bold text-gray-600 whitespace-nowrap"
               ><i class="fa-solid fa-table"></i> 當前分頁：</label
             >
-            <input
-              v-model="currentSheetName"
-              type="text"
-              class="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-indigo-700"
-              placeholder="輸入分頁名稱 (如 data)"
-            />
+            <div class="relative">
+              <select
+                v-model="currentSheetName"
+                @change="fetchData()"
+                class="appearance-none border border-gray-300 rounded pl-3 pr-8 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-indigo-700 bg-white cursor-pointer"
+              >
+                <option v-for="name in sheetList" :key="name" :value="name">
+                  {{ name }}
+                </option>
+              </select>
+              <div
+                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
+              >
+                <i class="fa-solid fa-chevron-down text-xs"></i>
+              </div>
+            </div>
+
+            <button
+              @click="fetchData()"
+              class="ml-2 bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded text-sm transition"
+            >
+              <i class="fa-solid fa-rotate-right"></i>
+            </button>
             <button
               @click="fetchData()"
               class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded text-sm transition"
