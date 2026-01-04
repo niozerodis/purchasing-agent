@@ -552,7 +552,7 @@
                 return; // 終止
               }
               // 把密碼存起來，下次就不用再輸入了
-              localStorage.setItem("my_app_password", userPassword);
+              localStorage.setItem("secret_key", userPassword);
             }
 
             try {
@@ -570,7 +570,7 @@
               const result = await res.json();
               if (result.status === "error") {
                 alert("密碼錯誤！請重新操作");
-                localStorage.removeItem("my_app_password"); // 清除錯誤密碼
+                localStorage.removeItem("secret_key"); // 清除錯誤密碼
               }
             } catch (e) {
               alert("儲存失敗！");
