@@ -486,6 +486,7 @@
 
           // ★ 新增：當前分頁名稱 (預設為 data)
           const currentSheetName = ref("data");
+          const sheetList = ref(["data"]);
 
           const defaultForm = {
             name: "",
@@ -510,6 +511,26 @@
               if (pwd) localStorage.setItem("my_app_password", pwd);
             }
             return pwd;
+          };
+
+          // ★ 新增：取得分頁清單的函式
+          const fetchSheetList = async () => {
+            try {
+              // 呼叫後端，帶上 action=get_sheets
+              const res = await fetch(`${API_URL}?action=get_sheets`);
+              const list = await res.json();
+
+              if (Array.isArray(list)) {
+                sheetList.value = list;
+
+                // 如果目前選的分頁不在清單裡 (例如剛刪除完)，就自動選第一個
+                if (!list.includes(currentSheetName.value) && list.length > 0) {
+                  currentSheetName.value = list[0];
+                }
+              }
+            } catch (e) {
+              console.error("無法取得分頁清單", e);
+            }
           };
 
           // ★ 讀取資料 (支援指定分頁)
@@ -605,6 +626,14 @@
             const newName = prompt("請輸入新分頁名稱 (例如: 2024-06)：");
             if (!newName) return;
 
+            // 檢查是否已存在
+            if (sheetList.value.includes(newName)) {
+              alert("分頁已存在，直接切換");
+              currentSheetName.value = newName;
+              fetchData();
+              return;
+            }
+
             // 暫時切換名稱去發送指令
             const oldName = currentSheetName.value;
             currentSheetName.value = newName;
@@ -613,6 +642,10 @@
             if (success) {
               alert("分頁建立成功！");
               items.value = []; // 新分頁是空的
+              // ★ 關鍵：建立成功後，重新抓一次清單，這樣下拉選單才會出現新的
+              await fetchSheetList();
+              // 確保選中新的
+              currentSheetName.value = newName;
             } else {
               currentSheetName.value = oldName; // 失敗就切回來
             }
@@ -630,13 +663,17 @@
             const success = await sendCommand("delete_sheet");
             if (success) {
               alert("分頁已刪除");
-              currentSheetName.value = "data"; // 刪除後回到預設頁
+              // ★ 關鍵：刪除後更新清單
+              await fetchSheetList();
+              // 自動讀取新選中的分頁 (fetchSheetList 裡面有寫邏輯會自動跳轉)
               fetchData();
             }
           };
 
-          onMounted(() => {
-            fetchData();
+          // ★ 畫面載入時，先抓清單，再抓資料
+          onMounted(async () => {
+            await fetchSheetList(); // 先取得有哪些分頁
+            await fetchData(); // 再讀取當前分頁資料
           });
 
           // 計算邏輯
