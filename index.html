@@ -543,12 +543,16 @@
           const syncToCloud = async () => {
             isSaving.value = true;
             try {
+              const payload = {
+                auth: "moneyflyrecord", // 這裡填跟後端一樣的密碼
+                data: items.value, // 這裡才是原本的代購資料
+              };
               // 使用 fetch POST 發送 JSON
               // 由於 Google Apps Script 的 CORS 特性，有時需要用 no-cors，
               // 但通常用 text/plain 傳送 JSON 字串是最穩定的 Hack
               await fetch(API_URL, {
                 method: "POST",
-                body: JSON.stringify(items.value),
+                body: JSON.stringify(payload),
               });
               console.log("Saved to cloud");
             } catch (error) {
