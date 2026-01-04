@@ -27,6 +27,22 @@
   </head>
   <body>
     <div id="app" class="min-h-screen pb-10">
+      <transition name="fade">
+        <div
+          v-if="isInitializing"
+          class="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center"
+        >
+          <div class="mb-4 text-indigo-600">
+            <i class="fa-solid fa-circle-notch fa-spin text-6xl"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-gray-800 tracking-wider">
+            代購小幫手
+          </h2>
+          <p class="text-gray-500 mt-2 text-sm">
+            正在連線 Google 資料庫，請稍候...
+          </p>
+        </div>
+      </transition>
       <nav class="bg-white shadow-sm sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex justify-between h-16 items-center">
@@ -480,6 +496,7 @@
           const searchQuery = ref("");
           const isLoading = ref(false);
           const isSaving = ref(false);
+          const isInitializing = ref(true);
           const showModal = ref(false);
           const isEditing = ref(false);
           const currentId = ref(null);
@@ -672,8 +689,21 @@
 
           // ★ 畫面載入時，先抓清單，再抓資料
           onMounted(async () => {
-            await fetchSheetList(); // 先取得有哪些分頁
-            await fetchData(); // 再讀取當前分頁資料
+            // 1. 設定為 true，確保遮罩顯示
+            isInitializing.value = true;
+
+            // 2. 開始並行抓取 (清單 和 資料)
+            // 我們使用 Promise.all 讓兩個請求同時發出，比較快
+            await Promise.all([
+              fetchSheetList(), // 抓分頁清單
+              fetchData(), // 抓第一頁資料
+            ]);
+
+            // 3. 為了讓體驗好一點，強制最少顯示 0.5 秒 (避免閃一下就消失)
+            //    資料都抓到了，把遮罩關掉 (設為 false)
+            setTimeout(() => {
+              isInitializing.value = false;
+            }, 500);
           });
 
           // 計算邏輯
@@ -738,6 +768,7 @@
             deleteItem,
             calculateTotal,
             formatNumber,
+            isInitializing,
           };
         },
       }).mount("#app");
