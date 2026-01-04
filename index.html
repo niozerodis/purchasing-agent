@@ -542,24 +542,42 @@
           // 並在新增/修改/刪除完成後呼叫
           const syncToCloud = async () => {
             isSaving.value = true;
+            let userPassword = localStorage.getItem("secret_key");
+
+            if (!userPassword) {
+              userPassword = prompt("請輸入管理員密碼：");
+              if (!userPassword) {
+                alert("未輸入密碼，取消儲存。");
+                isSaving.value = false;
+                return; // 終止
+              }
+              // 把密碼存起來，下次就不用再輸入了
+              localStorage.setItem("my_app_password", userPassword);
+            }
+
             try {
               const payload = {
-                auth: "moneyflyrecord", // 這裡填跟後端一樣的密碼
-                data: items.value, // 這裡才是原本的代購資料
+                auth: userPassword, // ★ 這裡改成使用變數，而不是寫死的字串
+                data: items.value,
               };
-              // 使用 fetch POST 發送 JSON
-              // 由於 Google Apps Script 的 CORS 特性，有時需要用 no-cors，
-              // 但通常用 text/plain 傳送 JSON 字串是最穩定的 Hack
-              await fetch(API_URL, {
+
+              const res = await fetch(API_URL, {
                 method: "POST",
                 body: JSON.stringify(payload),
               });
-              console.log("Saved to cloud");
-            } catch (error) {
-              console.error("Save failed", error);
-              alert("儲存失敗！資料可能未同步。");
+
+              // 檢查回傳結果，如果後端說密碼錯誤...
+              const result = await res.json();
+              if (result.status === "error") {
+                alert("密碼錯誤！請重新操作");
+                localStorage.removeItem("my_app_password"); // 清除錯誤密碼
+              }
+            } catch (e) {
+              alert("儲存失敗！");
             } finally {
-              isSaving.value = false;
+              setTimeout(() => {
+                isSaving.value = false;
+              }, 1000);
             }
           };
 
